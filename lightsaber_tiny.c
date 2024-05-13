@@ -122,6 +122,7 @@ volatile uint8_t    finished = 0;
 // Control
 volatile uint8_t    start_signal = 0;
 volatile uint16_t   control_data = 0;
+         uint16_t   addr_lowbits = 0;
 
 void read_bytes_blocking(uint32_t offset, uint8_t num) {
     // Wait for transaction to finish
@@ -178,6 +179,8 @@ void play_audio() {
 ISR(TIM1_COMPA_vect, ISR_NAKED) {
     asm (
         "push r22\n\t"
+        "in r22, 0x3f\n\t"
+        "push r22\n\t"
         "push r23\n\t"
         "push r24\n\t"
         "push r25\n\t"
@@ -228,61 +231,63 @@ ISR(TIM1_COMPA_vect, ISR_NAKED) {
         "nop\n\t"
         "nop\n\t"
         "nop\n\t"
-        "nop\n\t"
+        "asr r23\n\t"
         "sbrc r22, 0\n\t"
         "add r29, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r29\n\t"
+        "asr r29\n\t"
         "ror r28\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 1\n\t"
         "add r29, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r29\n\t"
+        "asr r29\n\t"
         "ror r28\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 2\n\t"
         "add r29, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r29\n\t"
+        "asr r29\n\t"
         "ror r28\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 3\n\t"
         "add r29, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r29\n\t"
+        "asr r29\n\t"
         "ror r28\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 4\n\t"
         "add r29, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r29\n\t"
+        "asr r29\n\t"
         "ror r28\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 5\n\t"
         "add r29, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r29\n\t"
+        "asr r29\n\t"
         "ror r28\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 6\n\t"
         "add r29, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r29\n\t"
+        "asr r29\n\t"
         "ror r28\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 7\n\t"
         "add r29, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r29\n\t"
-        "ror r28\n\t"
+        "sbrc __tmp_reg__, 0\n\t"
+        "add r28, r22\n\t"
+        "sbrc __tmp_reg__, 0\n\t"
+        "adc r29, __zero_reg__\n\t"
         
         "sbrc __tmp_reg__, 7\n\t"
         "com r28\n\t"
@@ -309,61 +314,64 @@ ISR(TIM1_COMPA_vect, ISR_NAKED) {
         "out 0x0E, r24\n\t"
         "ldi r24, 0b00010011\n\t"
         "ldi r25, 0b00010001\n\t"
+        "asr r23\n\t"
         "out 0x0D, r25\n\t"
         "sbrc r22, 0\n\t"
         "add r31, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r31\n\t"
+        "asr r31\n\t"
         "ror r30\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 1\n\t"
         "add r31, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r31\n\t"
+        "asr r31\n\t"
         "ror r30\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 2\n\t"
         "add r31, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r31\n\t"
+        "asr r31\n\t"
         "ror r30\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 3\n\t"
         "add r31, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r31\n\t"
+        "asr r31\n\t"
         "ror r30\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 4\n\t"
         "add r31, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r31\n\t"
+        "asr r31\n\t"
         "ror r30\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 5\n\t"
         "add r31, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r31\n\t"
+        "asr r31\n\t"
         "ror r30\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 6\n\t"
         "add r31, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r31\n\t"
+        "asr r31\n\t"
         "ror r30\n\t"
         
         "out 0x0D, r25\n\t"
         "sbrc r22, 7\n\t"
         "add r31, r23\n\t"
         "out 0x0D, r24\n\t"
-        "ror r31\n\t"
-        "ror r30\n\t"
+        "sbrc __tmp_reg__, 0\n\t"
+        "add r30, r22\n\t"
+        "sbrc __tmp_reg__, 0\n\t"
+        "adc r31, __zero_reg__\n\t"
         
         "tst __tmp_reg__\n\t"       // restore sign to result
         "brpl result_positive_2\n\t"
@@ -692,6 +700,8 @@ ISR(TIM1_COMPA_vect, ISR_NAKED) {
         "pop r24\n\t"
         "pop r23\n\t"
         "pop r22\n\t"
+        "out 0x3f, r22\n\t"
+        "pop r22\n\t"
         "reti\n\t"
     );
 }
@@ -721,8 +731,22 @@ int main() {
     
     while (1) {
         if (start_signal & 0b01) {
-            if ((control_data & 0xff00) == 0) {
-                amp = control_data & 0xff;
+            switch (control_data >> 12) {
+                case 0b0000:
+                    amp = control_data & 0xff;
+                    break;
+                case 0b0001:
+                    amp_flash = control_data & 0xff;
+                    break;
+                case 0b0100:
+                    addr_lowbits = control_data & 0x0fff;
+                    break;
+                case 0b0101:
+                    prepare_audio((((uint32_t)(control_data & 0x0fff))<<12) | addr_lowbits);
+                    play_audio();
+                    break;
+                default:
+                    break;
             }
             start_signal = 0;
         }

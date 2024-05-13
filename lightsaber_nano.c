@@ -7,6 +7,7 @@ volatile uint8_t    txbuflen;
 volatile uint8_t    txidx;
 
          uint8_t    amp_buzz = 100;
+         uint8_t    amp_flash = 100;
 
 
 ISR(USART_UDRE_vect) {
@@ -16,6 +17,13 @@ ISR(USART_UDRE_vect) {
     } else {
         txbuflen = 0;
         UCSR0B &= 0b11011111;
+    }
+}
+
+void printdec(uint32_t num, uint8_t digits, uint8_t offset) {
+    for (uint8_t x=0; x<digits; x++) {
+        txbuf[offset+digits-1-x] = '0' + (num % 10);
+        num = num / 10;
     }
 }
 
@@ -35,6 +43,7 @@ void communicate(uint16_t data) {
         "check_cs:\n\t"
         "sbic 0x03, 1\n\t"
         "rjmp check_cs\n\t"
+        //"sbi 0x0A, 7\n\t"
         "in r16, 0x0B\n\t"
         "ori r16, 0b10000000\n\t"
         "out 0x0B, r16\n\t"
@@ -100,7 +109,7 @@ void communicate(uint16_t data) {
         "nop\n\tnop\n\tnop\n\tnop\n\t"
         "nop\n\tnop\n\tnop\n\tnop\n\t"
         "nop\n\tnop\n\tnop\n\tnop\n\t"
-        "nop\n\t"
+        "nop\n\tnop\n\tnop\n\tnop\n\t"
         
         "nop\n\t"
         "bst %A0, 7\n\t"
@@ -144,6 +153,7 @@ void communicate(uint16_t data) {
         "nop\n\tnop\n\tnop\n\tnop\n\t"
         "andi r16, 0b01111111\n\t"
         "out 0x0B, r16\n\t"
+        //"cbi 0x0A, 7\n\t"
         
         "sei\n\t"
         :: "w" (data)
@@ -162,9 +172,61 @@ int main() {
     while (1) {
         if (UCSR0A & 0b10000000) {
             uint8_t t = UDR0;
-            if (t == '+') amp_buzz++;
-            if (t == '-') amp_buzz--;
-            communicate(amp_buzz);
+            if (t == '+') {
+                amp_buzz++;
+                communicate(amp_buzz);
+                txbuf[0] = 'b';
+                printdec(amp_buzz, 3, 1);
+                txbuf[4] = '\r';
+                txbuf[5] = '\n';
+                txbuflen = 6;
+                txidx = 0;
+                UCSR0B |= 0b00100000;
+            }
+            if (t == '-') {
+                amp_buzz--;
+                communicate(amp_buzz);
+                txbuf[0] = 'b';
+                printdec(amp_buzz, 3, 1);
+                txbuf[4] = '\r';
+                txbuf[5] = '\n';
+                txbuflen = 6;
+                txidx = 0;
+                UCSR0B |= 0b00100000;
+            }
+            if (t == 't') {
+                communicate(0xa5a5);
+            }
+            if (t == 'p') {
+                communicate(0x4000);
+                communicate(0x5000);
+            }
+            if (t == '[') {
+                amp_flash--;
+                communicate(0x1000 | amp_flash);
+                txbuf[0] = 'f';
+                printdec(amp_flash, 3, 1);
+                txbuf[4] = '\r';
+                txbuf[5] = '\n';
+                txbuflen = 6;
+                txidx = 0;
+                UCSR0B |= 0b00100000;
+            }
+            if (t == ']') {
+                amp_flash++;
+                communicate(0x1000 | amp_flash);
+                txbuf[0] = 'f';
+                printdec(amp_flash, 3, 1);
+                txbuf[4] = '\r';
+                txbuf[5] = '\n';
+                txbuflen = 6;
+                txidx = 0;
+                UCSR0B |= 0b00100000;
+            }
+            if (('1' <= t) && (t <= '9')) {
+                communicate(0x4000);
+                communicate(0x5030 + ((t-'1')<<4));
+            }
         }
     }
 }
