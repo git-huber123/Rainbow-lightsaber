@@ -1,2 +1,8 @@
 *.i
 *.s
+*.gbr
+*.cnc
+*.bak*
+*.sch~
+*.pcb~
+board/*.zip
