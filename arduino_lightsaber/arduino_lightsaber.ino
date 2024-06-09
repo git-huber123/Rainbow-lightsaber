@@ -9,11 +9,17 @@ uint8_t amp_buzz = 100;
 void setup(void) {
   Serial.begin(500000);
 
+  pinMode(6, OUTPUT);
+  digitalWrite(6, 1);
+
   ls.config_gyro(0x4C);
   ls.config_accel(0x44);
   ls.set_buzz_amplitude(100);
   ls.set_flash_amplitude(100);
   ls.play_from_flash(0x30000);
+
+  delay(3000);
+  digitalWrite(6, 0);
 }
 
 void loop() {
