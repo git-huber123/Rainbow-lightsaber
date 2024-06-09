@@ -26,14 +26,18 @@ and in my [blog post](https://mnigmann.blogspot.com/2024/05/lightsaber-prop-firs
 
 ## Parts of this repository
 This repository consists of four main parts:
- 1. The code for the ATtiny in `lightsaber_tiny.c`
- 2. The schematic and PCB files in the `board` directory. These files
+ 1. The code for the ATtiny in `lightsaber_tiny.c`. Before uploading this
+    code to the ATtiny, the correct clock source must be selected by
+    programming the low fuse byte (run `avrdude` with `-U lfuse:w:0xe1:m`).
+    This ensures that the ATtiny is clocked at 16MHz.
+ 3. The schematic and PCB files in the `board` directory. These files
     can be opened with gschem and gEDA PCB respectively.
- 3. The Arduino library in the `libraries` directory. The library can be
+ 4. The Arduino library in the `libraries` directory. The library can be
     installed by copying the `lightsaber` subdirectory into the
     `libraries` directory in your sketchbook folder. See the
     [Arduino documentation](https://docs.arduino.cc/software/ide-v1/tutorials/installing-libraries/#manual-installation)
- 4. The Arduino code for the Nano in the `arduino_lightsaber` directory.
+    fore more information on this process.
+ 6. The Arduino code for the Nano in the `arduino_lightsaber` directory.
     This can be opened directly with the Arduino IDE.
 
 The file `lightsaber_nano.c` is a test file that can also be uploaded to
