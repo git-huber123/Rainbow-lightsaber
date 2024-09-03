@@ -23,6 +23,8 @@ public:
     void set_buzz_amplitude(uint8_t amp);
     void set_flash_amplitude(uint8_t amp);
     void play_from_flash(uint32_t addr);
+    // Power management
+    uint16_t read_battery_voltage();
 private:
     // I2C functions
     void start_at_addr(uint8_t addr);

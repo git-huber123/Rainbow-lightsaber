@@ -18,7 +18,7 @@ void setup(void) {
   strip.begin();
   strip.show();
   for (uint8_t i=0; i < 144; i++) strip.setPixelColor(i, strip.Color(255, 0, 0));
-  strip.show();
+  //strip.show();
   
   pinMode(6, OUTPUT);
   digitalWrite(6, 1);
@@ -27,13 +27,15 @@ void setup(void) {
   ls.config_accel(0x44);
   ls.set_buzz_amplitude(100);
   ls.set_flash_amplitude(100);
-  //ls.play_from_flash(0x00000);
+  ls.play_from_flash(0x00000);
 
   delay(1000);
   digitalWrite(6, 0);
 
 }
 
+// 235 -> 4750 mV
+// 300 -> 3714 mV
 
 void loop() {
   // Get a new normalized sensor event
@@ -54,6 +56,18 @@ void loop() {
   Serial.print("Amplitude ");
   Serial.println(amp_buzz);
   ls.set_buzz_amplitude(amp_buzz);
+
+  uint16_t voltage = ls.read_battery_voltage();
+  uint8_t i=0;
+  while (voltage) {
+    uint8_t digit = voltage % 10;
+    strip.setPixelColor(i++, strip.Color(255, 0, ((digit & 1)?255:0)));
+    strip.setPixelColor(i++, strip.Color(255, 0, ((digit & 2)?255:0)));
+    strip.setPixelColor(i++, strip.Color(255, 0, ((digit & 4)?255:0)));
+    strip.setPixelColor(i++, strip.Color(255, 0, ((digit & 8)?255:0)));
+    voltage = voltage / 10;
+  }
+  strip.show();
 
   //Serial.println(" radians/s ");
   //Serial.print(x);

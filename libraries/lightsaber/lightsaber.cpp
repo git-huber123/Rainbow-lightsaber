@@ -85,6 +85,16 @@ void Lightsaber::play_from_flash(uint32_t addr) {
     communicate(AUDIO_COMMAND_FLASH_HIGH | (addr >> 12));
 }
 
+uint16_t Lightsaber::read_battery_voltage() {
+    ADCSRA = 0b10010111;
+    ADCSRB = 0b00000000;
+    ADMUX  = 0b01001110;
+    delay(10);
+    ADCSRA |= 0b01000000;
+    while (ADCSRA & 0b01000000);
+    return 1116250 / ADC;
+}
+
 
 
 void Lightsaber::start_at_addr(uint8_t addr) {
