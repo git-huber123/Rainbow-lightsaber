@@ -88,6 +88,7 @@ const uint8_t unit[833] PROGMEM = {
 volatile uint16_t   idx = 0;
 volatile uint8_t    amp = 100;
 volatile uint8_t    amp_flash = 100;
+volatile uint8_t    new_amp = 100;
 
 volatile uint32_t   addr = 1;
 volatile uint32_t   end_addr;
@@ -691,6 +692,18 @@ ISR(TIM1_COMPA_vect, ISR_NAKED) {
             "out 0x0D, r24\n\t"
         "no_flash:\n\t"                         // }
         
+        // Increase or decrease amp towards new_amp
+        "lds r24, new_amp\n\t"
+        "lds r25, amp\n\t"
+        "mov r28, r25\n\t"
+        "cp r24, r28\n\t"          // r24 - r25 negative -> C set -> decrease amp, r24 - r25 positive or zero -> C cleared -> no effect
+        "sbci r25, 0x00\n\t"
+        "cp r28, r24\n\t"
+        "adc r25, __zero_reg__\n\t"
+        "sts amp, r25\n\t"
+        //"lds r24, new_amp\n\t"
+        //"sts amp, r24\n\t"
+        
         "sbi 0x18, 3\n\t"
         "pop r31\n\t"
         "pop r30\n\t"
@@ -733,7 +746,7 @@ int main() {
         if (start_signal & 0b01) {
             switch (control_data >> 12) {
                 case 0b0000:
-                    amp = control_data & 0xff;
+                    new_amp = control_data & 0xff;
                     break;
                 case 0b0001:
                     amp_flash = control_data & 0xff;
