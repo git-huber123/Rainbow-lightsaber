@@ -14,6 +14,15 @@ Lightsaber::Lightsaber(void) {
     DDRD  |= 0b10000000;
     DDRB  |= 0b00010000;
     PORTB |= 0b00000100;
+    PORTC |= 0b00110000;
+}
+
+void Lightsaber::begin() {
+    // Wake the ATTiny
+    PORTB |= 0b00010000;
+    asm ("nop\n\tnop\n\tnop\n\tnop\n\t");
+    PORTB &= 0b11101111;
+    delay(10);
 }
 
 void Lightsaber::config_accel(uint8_t config) {
@@ -92,7 +101,31 @@ uint16_t Lightsaber::read_battery_voltage() {
     delay(10);
     ADCSRA |= 0b01000000;
     while (ADCSRA & 0b01000000);
-    return 1116250 / ADC;
+    return ADC;
+}
+
+void Lightsaber::sleep() {
+    //cli();
+    // Disable the LEDs and discharge the LED capacitor
+    PORTD |= 0b00101000;
+    // Shut down ATtiny
+    communicate(AUDIO_COMMAND_POWER_DOWN);
+    // MISO pin low (drive high to wake up ATtiny)
+    DDRB  |= 0b00010000;
+    PORTB &= 0b11101111;
+    // Nano will wake up when serial command is received
+    PCMSK2 = 0b00000011;
+    PCICR  = 0b00000100;
+    // Nano goes into power-down mode
+    SMCR   = 0b00000101;
+    asm ("sleep\n\t");
+    SMCR   = 0b00000100;
+    PCICR  = 0b00000000;
+    // Wake up ATtiny
+    PORTB |= 0b00010000;
+    asm ("nop\n\tnop\n\tnop\n\tnop\n\t");
+    PORTB &= 0b11101111;
+    sei();
 }
 
 
@@ -105,8 +138,8 @@ void Lightsaber::start_at_addr(uint8_t addr) {
     while (!(TWCR & 0b10000000));
     if (TWSR == 0x20) {
         // NACK received, transmit stop signal
-        UDR0 = 'n';
         TWCR = 0b10010100;
+        Serial.println("error");
         return;
     }
     // Write address

@@ -3,7 +3,7 @@
 
 #define LED_PIN 5
 
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(144, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(216, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 Lightsaber ls;
 
@@ -14,76 +14,105 @@ uint16_t average = 0;
 
 void setup(void) {
   Serial.begin(500000);
+  Serial.println("Booting lightsaber...");
 
   strip.begin();
-  strip.show();
-  for (uint8_t i=0; i < 144; i++) strip.setPixelColor(i, strip.Color(255, 0, 0));
+  ls.begin();
   //strip.show();
   
   pinMode(6, OUTPUT);
-  digitalWrite(6, 1);
+  pinMode(3, OUTPUT);
+  digitalWrite(3, 0);
+  for (uint8_t i=0; i < 216; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 0));
+  }
+  strip.show();
+  //digitalWrite(6, 1);
 
   ls.config_gyro(0x4C);
   ls.config_accel(0x44);
-  ls.set_buzz_amplitude(100);
+  Serial.println("Started accelerometer");
+  Serial.flush();
+  ls.set_buzz_amplitude(10);
   ls.set_flash_amplitude(100);
   ls.play_from_flash(0x00000);
+  for (uint8_t i=0; i < 108; i++) {
+    //uint16_t voltage = ls.read_battery_voltage();
+    //Serial.println(voltage);
+    strip.setPixelColor(i, strip.Color(255, 0, 0));
+    strip.setPixelColor(215-i, strip.Color(255, 0, 0));
+    strip.show();
+  }
+  //delay(2000);
+  //ls.set_buzz_amplitude(20);
 
-  delay(1000);
-  digitalWrite(6, 0);
+  //delay(5000);
+  //Serial.println("sleeping");
+  //Serial.flush();
+  //ls.sleep();
+
+  //digitalWrite(6, 0);
 
 }
 
 // 235 -> 4750 mV
 // 300 -> 3714 mV
+uint8_t counter = 10;
+
+EMPTY_INTERRUPT(PCINT2_vect);
 
 void loop() {
   // Get a new normalized sensor event
-  
+
+  if (Serial.available()) {
+    char c = Serial.read();
+    if (c == 's') {
+      Serial.println("sleeping");
+      Serial.flush();
+      ls.sleep();
+      //UDR0 = ((SREG & 0x80) ? 'i' : 'd');
+      Serial.println("awake");
+    }
+  }
 
   /* Display the results (rotation is measured in rad/s) */
-  ls.read_gyro(&x, &y, &z);
-  Serial.print("Gyro X: ");
+  Serial.print("r: ");
+  ls.read_accel(&x, &y, &z);
+  int32_t mag = (int32_t)z*(int32_t)z + (int32_t)y*(int32_t)y + (int32_t)x*(int32_t)x;
+  mag = isqrt(mag);
   Serial.print(x);
-  Serial.print(" \tY: ");
+  Serial.print("\t");
   Serial.print(y);
-  Serial.print(" \tZ: ");
+  Serial.print("\t");
   Serial.print(z);
-  int32_t mag = (int32_t)x*(int32_t)x + (int32_t)y*(int32_t)y;
-  average = ((uint32_t)average * 100 + (uint32_t)isqrt(mag)*156)>>8;
-  if (average > (150<<5)) average = 150<<5;
-  amp_buzz = 20 + (average>>5);
-  Serial.print("Amplitude ");
-  Serial.println(amp_buzz);
-  ls.set_buzz_amplitude(amp_buzz);
-
-  uint16_t voltage = ls.read_battery_voltage();
-  uint8_t i=0;
-  while (voltage) {
-    uint8_t digit = voltage % 10;
-    strip.setPixelColor(i++, strip.Color(255, 0, ((digit & 1)?255:0)));
-    strip.setPixelColor(i++, strip.Color(255, 0, ((digit & 2)?255:0)));
-    strip.setPixelColor(i++, strip.Color(255, 0, ((digit & 4)?255:0)));
-    strip.setPixelColor(i++, strip.Color(255, 0, ((digit & 8)?255:0)));
-    voltage = voltage / 10;
+  Serial.print("\t");
+  Serial.println(mag);
+  //Serial.print("\t");
+  if (counter == 10) {
+    ls.read_gyro(&x, &y, &z);
+    //Serial.print("Gyro X: ");
+    //Serial.print(x);
+    //Serial.print(" \tY: ");
+    //Serial.print(y);
+    //Serial.print(" \tZ: ");
+    //Serial.println(z);
+    int32_t mag = (int32_t)z*(int32_t)z + (int32_t)y*(int32_t)y;
+    average = ((uint32_t)average * 100 + (uint32_t)isqrt(mag)*156)>>8;
+    if (average > (150<<5)) average = 150<<5;
+    amp_buzz = 10 + (average>>5);
+    //Serial.print("Amplitude ");
+    //Serial.println(amp_buzz);
+    //Serial.print(amp_buzz);
+    //Serial.print("\t");
+    ls.set_buzz_amplitude(amp_buzz);
+  
+    uint16_t voltage = ls.read_battery_voltage();
+    //Serial.print("Voltage: ");
+    //Serial.println(voltage);
+    //Serial.println(voltage);
+    counter = 0;
   }
-  strip.show();
+  counter++;
 
-  //Serial.println(" radians/s ");
-  //Serial.print(x);
-  //Serial.print("\t");
-  //Serial.print(y);
-  //Serial.print("\t");
-  //Serial.print(z);
-  //Serial.print("\t");
-  //ls.read_accel(&x, &y, &z);
-  //Serial.print(x);
-  //Serial.print("\t");
-  //Serial.print(y);
-  //Serial.print("\t");
-  //Serial.print(z);
-  //Serial.println();
-  //amp_buzz++;
-
-  delay(100);
+  delay(10);
 }

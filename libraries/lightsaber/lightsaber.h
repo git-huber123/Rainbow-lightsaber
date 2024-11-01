@@ -7,11 +7,13 @@
 #define AUDIO_COMMAND_AMP_FLASH     0x1000
 #define AUDIO_COMMAND_FLASH_LOW     0x4000
 #define AUDIO_COMMAND_FLASH_HIGH    0x5000
+#define AUDIO_COMMAND_POWER_DOWN    0x7000
 
 class Lightsaber {
 public:
     // Constructor
     Lightsaber(void);
+    void begin();
     // Configuration for LSM6DS
     void config_accel(uint8_t config);
     void config_gyro(uint8_t config);
@@ -25,6 +27,7 @@ public:
     void play_from_flash(uint32_t addr);
     // Power management
     uint16_t read_battery_voltage();
+    void sleep();
 private:
     // I2C functions
     void start_at_addr(uint8_t addr);

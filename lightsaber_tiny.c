@@ -16,6 +16,7 @@
 //  * 0100 dddd dddd dddd               WAV segment low bits
 //  * 0101 dddd dddd dddd               Play WAV segment (high bits)
 //  * 0110 0000 0000 0000               Stop current WAV segment
+//  * 0111 0000 0000 0000               Enter low-power mode
 
 #define BUZZ_CENTER 174
 const uint8_t unit[833] PROGMEM = {
@@ -86,9 +87,9 @@ const uint8_t unit[833] PROGMEM = {
     128};
 
 volatile uint16_t   idx = 0;
-volatile uint8_t    amp = 100;
-volatile uint8_t    amp_flash = 100;
-volatile uint8_t    new_amp = 100;
+volatile uint8_t    amp = 0;
+volatile uint8_t    amp_flash = 0;
+volatile uint8_t    new_amp = 0;
 
 volatile uint32_t   addr = 1;
 volatile uint32_t   end_addr;
@@ -176,6 +177,7 @@ void play_audio() {
     flash_mode |= FLASH_ENABLE | FLASH_AUDIO;
 }
 
+EMPTY_INTERRUPT(PCINT0_vect);
 
 ISR(TIM1_COMPA_vect, ISR_NAKED) {
     asm (
@@ -719,6 +721,24 @@ ISR(TIM1_COMPA_vect, ISR_NAKED) {
     );
 }
 
+void send_to_dac(uint16_t value) {
+    USIDR = (value >> 8);
+    USISR = 0b01000000;
+    for (uint8_t i=0; i < 8; i++) {
+        USICR = 0b00010001;
+        asm ("nop\n\tnop\n\t");
+        USICR = 0b00010011;
+    }
+    
+    USIDR = (value & 0xff);
+    USISR = 0b01000000;
+    for (uint8_t i=0; i < 8; i++) {
+        USICR = 0b00010001;
+        asm ("nop\n\tnop\n\t");
+        USICR = 0b00010011;
+    }
+}
+
 int main() {
     PLLCSR &= 0b11111011;   // Disable PCK
     TCCR1  = 0b10000100;    // divide CK by 8
@@ -739,8 +759,8 @@ int main() {
     sei();
     
     
-    prepare_audio(0x000000);
-    play_audio();
+    //prepare_audio(0x000000);
+    //play_audio();
     
     while (1) {
         if (start_signal & 0b01) {
@@ -757,6 +777,27 @@ int main() {
                 case 0b0101:
                     prepare_audio((((uint32_t)(control_data & 0x0fff))<<12) | addr_lowbits);
                     play_audio();
+                    break;
+                case 0b0110:
+                    flash_mode = 0;
+                    break;
+                case 0b0111:
+                    // Disable the timer
+                    TIMSK &= 0b10111111;
+                    // Disable the DAC
+                    send_to_dac(0x2000);
+                    // Enable wake-up interrupt
+                    PCMSK  = 0b00000001;
+                    GIFR   = 0b00100000;
+                    GIMSK  = 0b00100000;
+                    // Sleep
+                    MCUCR  = (MCUCR & 0b11000111) | 0b00110000;
+                    asm ("sleep\n\t");
+                    MCUCR &= 0b11000111;
+                    // disable wake-up interrupt, enable DAC, enable timer
+                    GIMSK  = 0b00000000;
+                    send_to_dac(0x3000);
+                    TIMSK |= 0b01000000;
                     break;
                 default:
                     break;
