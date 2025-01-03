@@ -170,7 +170,7 @@ void play_audio() {
     curr_chunk = 0;
     curr_sample = 0;
     finished = 0;
-    addr = data_offsets[0];
+    addr = data_offsets[0]+bytes_per_sample-1;
     //addr = 0x3002C;
     end_addr = addr + data_lengths[0];
     if (bytes_per_sample > 2) addr += (bytes_per_sample - 2);
@@ -571,47 +571,8 @@ ISR(TIM1_COMPA_vect, ISR_NAKED) {
             "nop\n\t"
             "nop\n\t"
             "in r22, 0x0F\n\t"
-            "sts next_sample, r22\n\t"
-            
-            //"clr r22\n\t"                       // Read in data
-            "lds r22, addr+2\n\t"
-            "out 0x0F, r22\n\t"
-            "ldi r22, 0b01000000\n\t"
-            "out 0x0D, r25\n\t"
-            "nop\n\t"
-            "out 0x0D, r24\n\t"
-            "nop\n\t"
-            "out 0x0D, r25\n\t"
-            "nop\n\t"
-            "out 0x0D, r24\n\t"
-            "nop\n\t"
-            "out 0x0D, r25\n\t"
-            "nop\n\t"
-            "out 0x0D, r24\n\t"
-            "nop\n\t"
-            "out 0x0D, r25\n\t"
-            "nop\n\t"
-            "out 0x0D, r24\n\t"
-            "nop\n\t"
-            "out 0x0D, r25\n\t"
-            "nop\n\t"
-            "out 0x0D, r24\n\t"
-            "nop\n\t"
-            "out 0x0D, r25\n\t"
-            "nop\n\t"
-            "out 0x0D, r24\n\t"
-            "nop\n\t"
-            "out 0x0D, r25\n\t"
-            "nop\n\t"
-            "out 0x0D, r24\n\t"
-            "nop\n\t"
-            "out 0x0D, r25\n\t"
-            "nop\n\t"
-            "out 0x0D, r24\n\t"
-            "nop\n\t"
-            "nop\n\t"
-            "in r22, 0x0F\n\t"
             "sts next_sample+1, r22\n\t"
+            
             
         "rjmp no_flash\n\t"                     // } else {
         "no_audio:\n\t"
