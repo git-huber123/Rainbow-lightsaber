@@ -86,6 +86,7 @@ const uint8_t unit[833] PROGMEM = {
     128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
     128};
 
+volatile uint16_t   unitlen = 833;
 volatile uint16_t   idx = 0;
 volatile uint8_t    amp = 0;
 volatile uint8_t    amp_flash = 0;
@@ -201,10 +202,11 @@ ISR(TIM1_COMPA_vect, ISR_NAKED) {
         "adc r31, r25\n\t"
         "lpm r23, Z\n\t"
         "adiw r24, 1\n\t"
-        "ldi r30, hi8(833)\n\t"
-        "cpi r24, lo8(833)\n\t"
-        "cpc r25, r30\n\t"
-        "brne store_next_addr\n\t"
+        "lds r30, unitlen\n\t"
+        "lds r31, unitlen+1\n\t"
+        "cp r24, r30\n\t"
+        "cpc r25, r31\n\t"
+        "brlo store_next_addr\n\t"
                 "clr r24\n\t"
                 "clr r25\n\t"
         "store_next_addr:\n\t"
@@ -731,6 +733,9 @@ int main() {
                     break;
                 case 0b0001:
                     amp_flash = control_data & 0xff;
+                    break;
+                case 0b0011:
+                    unitlen = control_data & 0x0fff;
                     break;
                 case 0b0100:
                     addr_lowbits = control_data & 0x0fff;

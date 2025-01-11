@@ -2,6 +2,9 @@
 #include "lightsaber.h"
 #include "LSM6DS_registers.h"
 
+#define ATTINY_CS_PIN   PINB
+#define ATTINY_CS_MASK  0b00000100
+
 Lightsaber::Lightsaber(void) {
     // I2C bitrate is 100kHz
     TWBR   = 72;
@@ -62,12 +65,13 @@ void Lightsaber::read_gyro(int16_t *x, int16_t *y, int16_t *z) {
 void Lightsaber::communicate(uint16_t data) {
     uint8_t sreg = SREG;
     cli();
-    while (PINB & 0b00000100);
-    while (!(PINB & 0b00000100));
+    while (ATTINY_CS_PIN & ATTINY_CS_MASK);
+    while (!(ATTINY_CS_PIN & ATTINY_CS_MASK));
     SPCR = 0b01000000;
-    while (PINB & 0b00000100);
+    while (ATTINY_CS_PIN & ATTINY_CS_MASK);
     SPDR = 0xf5;
     asm ("nop\n\tnop\n\tnop\n\tnop\n\t"
+         "nop\n\tnop\n\tnop\n\tnop\n\t"
          "nop\n\tnop\n\tnop\n\tnop\n\t"
          "nop\n\tnop\n\tnop\n\tnop\n\t"
          "nop\n\tnop\n\tnop\n\tnop\n\t");
@@ -92,6 +96,10 @@ void Lightsaber::set_flash_amplitude(uint8_t amp) {
 void Lightsaber::play_from_flash(uint32_t addr) {
     communicate(AUDIO_COMMAND_FLASH_LOW | (addr & 0xfff));
     communicate(AUDIO_COMMAND_FLASH_HIGH | (addr >> 12));
+}
+
+void Lightsaber::set_buzz_length(uint16_t length) {
+    communicate(AUDIO_COMMAND_LENGTH_BUZZ | (length & 0x0fff));
 }
 
 uint16_t Lightsaber::read_battery_voltage() {

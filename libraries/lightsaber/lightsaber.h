@@ -5,6 +5,7 @@
 
 #define AUDIO_COMMAND_AMP_BUZZ      0x0000
 #define AUDIO_COMMAND_AMP_FLASH     0x1000
+#define AUDIO_COMMAND_LENGTH_BUZZ   0x3000
 #define AUDIO_COMMAND_FLASH_LOW     0x4000
 #define AUDIO_COMMAND_FLASH_HIGH    0x5000
 #define AUDIO_COMMAND_POWER_DOWN    0x7000
@@ -24,6 +25,7 @@ public:
     void communicate(uint16_t data);
     void set_buzz_amplitude(uint8_t amp);
     void set_flash_amplitude(uint8_t amp);
+    void set_buzz_length(uint16_t length);
     void play_from_flash(uint32_t addr);
     // Power management
     uint16_t read_battery_voltage();
