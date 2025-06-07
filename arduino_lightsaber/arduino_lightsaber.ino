@@ -2,6 +2,13 @@
 #include <Adafruit_NeoPixel.h>
 
 #define LED_PIN 5
+#define LED_COLOR strip.Color(0, 0, 255)
+
+#define IMPACT_THRESHOLD 2000
+#define BUZZ_FILTER_TC 100
+#define BUZZ_MAX_CHANGE 150
+#define BUZZ_BASELINE 50
+#define PERIOD_BASELINE 833
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(216, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -35,8 +42,8 @@ void setup(void) {
   ls.set_flash_amplitude(100);
   ls.play_from_flash(0x00000);
   for (uint8_t i=0; i < 108; i++) {
-    strip.setPixelColor(i, strip.Color(255, 0, 0));
-    strip.setPixelColor(215-i, strip.Color(255, 0, 0));
+    strip.setPixelColor(i, LED_COLOR);
+    strip.setPixelColor(215-i, LED_COLOR);
     strip.show();
     ls.set_buzz_amplitude(i/2);
   }
@@ -57,6 +64,7 @@ void loop() {
   m = millis();
   if (m - last_time >= 10) {
     if (counter == 10) {
+      Serial.println(amp_buzz);
       ls.set_buzz_amplitude(amp_buzz);
       ls.set_buzz_length(buzz_length);
       last_time = m;
@@ -77,20 +85,20 @@ void loop() {
     ls.read_gyro(&x, &y, &z);
     mag = (int32_t)z*(int32_t)z + (int32_t)y*(int32_t)y;
     mag = isqrt(mag);
-    if ((mag - last_mag > 2000) || (mag - last_mag < -2000)) {
+    if ((mag - last_mag > IMPACT_THRESHOLD) || (mag - last_mag < -IMPACT_THRESHOLD)) {
       strip.fill(strip.Color(255,255,255));
       strip.show();
-      strip.fill(strip.Color(255,0,0));
+      strip.fill(LED_COLOR);
       strip.show();
     }
     last_mag = mag;
   
     if (counter == 10) {
       int32_t mag = (int32_t)z*(int32_t)z + (int32_t)y*(int32_t)y;
-      average = ((uint32_t)average * 100 + (uint32_t)isqrt(mag)*156)>>8;
-      if (average > (150<<5)) average = 150<<5;
-      amp_buzz = 50 + (average>>5);
-      buzz_length = 833 - (average >> 5);
+      average = ((uint32_t)average * (BUZZ_FILTER_TC) + (uint32_t)isqrt(mag)*(256-BUZZ_FILTER_TC))>>8;
+      if (average > (BUZZ_MAX_CHANGE<<5)) average = BUZZ_MAX_CHANGE<<5;
+      amp_buzz = BUZZ_BASELINE + (average>>5);
+      buzz_length = PERIOD_BASELINE - (average >> 5);
     }
   }
 }
