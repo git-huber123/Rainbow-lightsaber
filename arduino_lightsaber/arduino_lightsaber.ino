@@ -154,7 +154,7 @@ void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle) { // NUM_LEDS is
 
       // All of the possible base_hue values and hue_offset values are already declared, so this makes it quicker to calculate them
       uint16_t hue_offset = getHueOffset(led_num);
-      uint16_t hue = (base_hue + hue_offset) & 0xFFFF;
+      uint16_t hue = (base_hue - hue_offset) & 0xFFFF;
 
       uint32_t color = strip.gamma32(strip.ColorHSV(hue, 240, 240));
 
