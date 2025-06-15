@@ -2,14 +2,14 @@ cycle_length_ms = 5000
 half_leds = 108
 
 # Generate base_hue values
-base_hue = [int((65536 * (m % cycle_length_ms)) / cycle_length_ms) for m in range(cycle_length_ms + 1)]
+# base_hue = [int((65536 * (m % cycle_length_ms)) / cycle_length_ms) for m in range(cycle_length_ms + 1)]
 
 # Generate hue_offset values
 hue_offset = [int((led_num / half_leds) * 65536) for led_num in range(half_leds)]
 
-print("const uint16_t base_hue[CYCLE_LENGTH_MS + 1] PROGMEM = {")
-print(", ".join(str(val) for val in base_hue))
-print("};\n")
+# print("const uint16_t base_hue[CYCLE_LENGTH_MS + 1] PROGMEM = {")
+# print(", ".join(str(val) for val in base_hue))
+# print("};\n")
 
 print("const uint16_t hue_offset[HALF_LEDS] PROGMEM = {")
 print(", ".join(str(val) for val in hue_offset))
