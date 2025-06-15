@@ -18,8 +18,10 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ
 
 // getBaseHue(milliseconds % (full_cycle_time_ms + 1)) and getHueOffset(led_num) are functions to check the LUT provided by hueLUT.h
 // make sure generateHueLUT(milliseconds per full cycle) is called in setup() before LED_Rainbow() is ever used
-// if the hueLUT needs to be changed, the code to generate a new LUT is in the github repository at https://github.com/git-huber123/Rainbow-lightsaber
+// if the hueLUT needs to be changed, the code to generate a new LUT is in the GitHub repository at https://github.com/git-huber123/Rainbow-lightsaber
 
+int percent = getBatteryPercent(); // Note that this is not exact, but approximate to the nearest 5%
+unsigned long last_battery_check_ms = 0;
 
 const unsigned long impact_cooldown = 300; // In ms
 unsigned long last_impact_time = 0;
@@ -61,69 +63,34 @@ int16_t x, y, z;
 uint8_t amp_buzz = 100;
 uint16_t average = 0;
 
-void setup(void) {
+// NEW FUNCTIONS
+int getBatteryPercent() {
+  uint16_t adc = read_battery_voltage();  // Reads Vcc using internal reference
+  float voltage = (1.1 * 1023.0) / (float)adc;
 
-  strip.begin();
-  int brightness = MIN_BRIGHTNESS;
-  strip.setBrightness(brightness);
-  ls.begin();
-
-  Serial.begin(500000);
-  Serial.println("Booting lightsaber...");
-
-  // NEW CODE
-  flashing_colors[0] = strip.Color(0, 0, 255);
-  flashing_colors[1] = strip.Color(255, 0, 0);
-  // END OF NEW CODE
-
-
-
-  pinMode(6, OUTPUT);
-  pinMode(3, OUTPUT);
-  digitalWrite(3, 0);
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 0));
-  }
-  strip.show();
-
-  ls.config_gyro(0x4C);
-  ls.config_accel(0x44);
-  Serial.println("Started accelerometer");
-  Serial.flush();
-  ls.set_buzz_amplitude(10);
-  ls.set_flash_amplitude(100);
-  ls.play_from_flash(0x00000);
-  for (uint8_t i = 0; i < HALF_LEDS; i++) {  // NEW FADE IN TYPE
-    if (LED_type == 1) {               // If its rainbow type, the opening sequence is the rainbow fill
-      delay(5);
-      // Calculate hue progressing from bottom to middle
-      uint16_t hue = (65536 / HALF_LEDS) * i;  // Hue from 0 to full rainbow spread over half strip
-
-      // Set color for bottom half (LEDs 0 to 107)
-      strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(hue, 240, 240)));
-
-      // Set color for top half (LEDs 108 to 215), mirrored index
-      strip.setPixelColor(NUM_LEDS - 1 - i, strip.gamma32(strip.ColorHSV(hue, 240, 240)));
-
-      strip.show();
-      ls.set_buzz_amplitude(i / 2);
-
-    }
-  }
-  rainbow_start_time = millis(); // This is so that the wave effect doesn't jump, but smoothly continues after finishing the fade in
-  Serial.println("Finished Setup");
+  if (voltage >= 4.20) return 100;
+  if (voltage >= 4.15) return 95;
+  if (voltage >= 4.11) return 90;
+  if (voltage >= 4.07) return 85;
+  if (voltage >= 4.03) return 80;
+  if (voltage >= 3.99) return 75;
+  if (voltage >= 3.95) return 70;
+  if (voltage >= 3.91) return 65;
+  if (voltage >= 3.87) return 60;
+  if (voltage >= 3.83) return 55;
+  if (voltage >= 3.79) return 50;
+  if (voltage >= 3.75) return 45;
+  if (voltage >= 3.71) return 40;
+  if (voltage >= 3.67) return 35;
+  if (voltage >= 3.63) return 30;
+  if (voltage >= 3.59) return 25;
+  if (voltage >= 3.55) return 20;
+  if (voltage >= 3.51) return 15;
+  if (voltage >= 3.47) return 10;
+  if (voltage >= 3.40) return 5;
+  return 0;
 }
 
-// 235 -> 4750 mV
-// 300 -> 3714 mV
-uint8_t counter = 10;
-
-int32_t last_mag = 0;
-int32_t mag;
-uint16_t buzz_length = 0;
-unsigned long last_time, m;
-
-// NEW FUNCTIONS ADDED BY ME
 bool valueInArray(int value, int* arr, int len) {
   for (int i = 0; i < len; i++) {
     if (arr[i] == value) return true;
@@ -132,12 +99,20 @@ bool valueInArray(int value, int* arr, int len) {
 }
 
 
-void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle) { // NUM_LEDS is used when you want the total amount of LEDs, HALF_LEDS is used for half the LEDs
+void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle, int percent) { // NUM_LEDS is used when you want the total amount of LEDs, HALF_LEDS is used for half the LEDs
 
   // Original base_hue calculation
   // uint16_t base_hue = (uint32_t)((65536UL * (m % (unsigned long)cycle_length_ms)) / cycle_length_ms);
   int cycle_length_ms = seconds_per_full_cycle * 1000;
   int base_hue = getBaseHue(m % (cycle_length_ms + 1));
+
+  strip.setBrightness(MIN_BRIGHTNESS + ((percent / 100.0) * (255 - MIN_BRIGHTNESS)));
+
+  if (percent <= 25) {
+    strip.setBrightness(75);
+    strip.fill(strip.color(255, 0, 0));
+    return;
+  }
 
 
   if (cycle_type == 1) {
@@ -164,6 +139,7 @@ void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle) { // NUM_LEDS is
       // Set color for top half (LEDs 108 to 215), mirrored index
       strip.setPixelColor(NUM_LEDS - led_num - 1, color);
     }
+    return;
   } else if (cycle_type == 2) {
     // strip.fill(strip.Color(0, 255, 0));
     // strip.show();
@@ -173,6 +149,7 @@ void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle) { // NUM_LEDS is
 
       strip.setPixelColor(led_num, strip.gamma32(strip.ColorHSV(base_hue, 240, 240)));
     }
+    return;
   } 
   #if 0
   if (cycle_type == 3 && false) {
@@ -232,6 +209,76 @@ void LED_Flashes(unsigned long m, unsigned long &last_flash_time, uint32_t color
   }
 }
 // END OF NEW FUNCTIONS
+
+void setup(void) {
+
+  strip.begin();
+  ls.begin();
+
+  Serial.begin(500000);
+  Serial.println("Booting lightsaber...");
+
+  // NEW CODE
+  flashing_colors[0] = strip.Color(0, 0, 255);
+  flashing_colors[1] = strip.Color(255, 0, 0);
+  // END OF NEW CODE
+
+
+
+  pinMode(6, OUTPUT);
+  pinMode(3, OUTPUT);
+  digitalWrite(3, 0);
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 0));
+  }
+  strip.show();
+
+  ls.config_gyro(0x4C);
+  ls.config_accel(0x44);
+  Serial.println("Started accelerometer");
+  Serial.flush();
+  ls.set_buzz_amplitude(10);
+  ls.set_flash_amplitude(100);
+  ls.play_from_flash(0x00000);
+
+  strip.setBrightness(MIN_BRIGHTNESS + ((percent / 100.0) * (255 - MIN_BRIGHTNESS)));
+
+  for (uint8_t i = 0; i < HALF_LEDS; i++) {  // NEW FADE IN TYPE
+    if (LED_type == 1) {               // If its rainbow type, the opening sequence is the rainbow fill
+      delay(5);
+      // Calculate hue progressing from bottom to middle
+      uint16_t hue = (65536 / HALF_LEDS) * i;  // Hue from 0 to full rainbow spread over half strip
+
+      // Set color for bottom half (LEDs 0 to 107)
+      strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(hue, 240, 240)));
+
+      // Set color for top half (LEDs 108 to 215), mirrored index
+      strip.setPixelColor(NUM_LEDS - 1 - i, strip.gamma32(strip.ColorHSV(hue, 240, 240)));
+
+      if (percent <= 25) {
+        strip.setBrightness(75);
+        strip.fill(strip.color(255, 0, 0));
+        break;
+      }
+
+      strip.show();
+      ls.set_buzz_amplitude(i / 2);
+
+    }
+  }
+  rainbow_start_time = millis(); // This is so that the wave effect doesn't jump, but smoothly continues after finishing the fade in
+  Serial.println("Finished Setup");
+}
+
+// 235 -> 4750 mV
+// 300 -> 3714 mV
+uint8_t counter = 10;
+
+int32_t last_mag = 0;
+int32_t mag;
+uint16_t buzz_length = 0;
+unsigned long last_time, m;
+
 EMPTY_INTERRUPT(PCINT2_vect);
 
 void loop() {
@@ -280,9 +327,12 @@ void loop() {
     need_to_sparkle = true;
   } else {
     need_to_sparkle = false;
-  }  
+  }
+  if (m - last_battery_check_ms >= 1000) {
+    percent = getBatteryPercent(); // Note that this is not exact, but approximate to the nearest 5%
+    last_battery_check_ms = m
+  }
 
-
-  LED_Rainbow(m, rainbow_cycle_type, need_to_sparkle);
+  LED_Rainbow(m, rainbow_cycle_type, need_to_sparkle, percent);
   
 }
