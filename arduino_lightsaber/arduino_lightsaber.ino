@@ -222,6 +222,7 @@ void setup(void) {
 
   Serial.begin(500000);
   Serial.println("Booting lightsaber...");
+  Serial.println(getBatteryPercent());
 
   // NEW CODE
   flashing_colors[0] = strip.Color(0, 0, 255);
