@@ -12,7 +12,7 @@
 #define PERIOD_BASELINE 833
 #define NUM_LEDS 216
 #define HALF_LEDS (NUM_LEDS / 2)
-#define MIN_BRIGHTNESS 128
+#define MIN_BRIGHTNESS 100
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -20,7 +20,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ
 // make sure generateHueLUT(milliseconds per full cycle) is called in setup() before LED_Rainbow() is ever used
 // if the hueLUT needs to be changed, the code to generate a new LUT is in the GitHub repository at https://github.com/git-huber123/Rainbow-lightsaber
 
-int percent = getBatteryPercent(); // Note that this is not exact, but approximate to the nearest 5%
+int percent = 100; 
 unsigned long last_battery_check_ms = 0;
 
 const unsigned long impact_cooldown = 300; // In ms
@@ -64,8 +64,14 @@ uint8_t amp_buzz = 100;
 uint16_t average = 0;
 
 // NEW FUNCTIONS
+
+uint16_t calculateBaseHue(unsigned long ms, uint16_t cycle_length_ms) {
+  return (uint32_t(ms % cycle_length_ms) * 65536.0) / cycle_length_ms;
+}
+
 int getBatteryPercent() {
-  uint16_t adc = read_battery_voltage();  // Reads Vcc using internal reference
+// Note that this is not exact, but approximate to the nearest 5%
+  uint16_t adc = ls.read_battery_voltage();  // Reads Vcc using internal reference
   float voltage = (1.1 * 1023.0) / (float)adc;
 
   if (voltage >= 4.20) return 100;
@@ -98,19 +104,18 @@ bool valueInArray(int value, int* arr, int len) {
   return false;
 }
 
-
 void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle, int percent) { // NUM_LEDS is used when you want the total amount of LEDs, HALF_LEDS is used for half the LEDs
 
   // Original base_hue calculation
   // uint16_t base_hue = (uint32_t)((65536UL * (m % (unsigned long)cycle_length_ms)) / cycle_length_ms);
   int cycle_length_ms = seconds_per_full_cycle * 1000;
-  int base_hue = getBaseHue(m % (cycle_length_ms + 1));
+  uint16_t base_hue = calculateBaseHue(m, 5000);
 
   strip.setBrightness(MIN_BRIGHTNESS + ((percent / 100.0) * (255 - MIN_BRIGHTNESS)));
 
   if (percent <= 25) {
     strip.setBrightness(75);
-    strip.fill(strip.color(255, 0, 0));
+    strip.fill(strip.Color(255, 0, 0));
     return;
   }
 
@@ -240,7 +245,7 @@ void setup(void) {
   ls.set_buzz_amplitude(10);
   ls.set_flash_amplitude(100);
   ls.play_from_flash(0x00000);
-
+  percent = getBatteryPercent();
   strip.setBrightness(MIN_BRIGHTNESS + ((percent / 100.0) * (255 - MIN_BRIGHTNESS)));
 
   for (uint8_t i = 0; i < HALF_LEDS; i++) {  // NEW FADE IN TYPE
@@ -257,7 +262,7 @@ void setup(void) {
 
       if (percent <= 25) {
         strip.setBrightness(75);
-        strip.fill(strip.color(255, 0, 0));
+        strip.fill(strip.Color(255, 0, 0));
         break;
       }
 
@@ -330,7 +335,7 @@ void loop() {
   }
   if (m - last_battery_check_ms >= 1000) {
     percent = getBatteryPercent(); // Note that this is not exact, but approximate to the nearest 5%
-    last_battery_check_ms = m
+    last_battery_check_ms = m;
   }
 
   LED_Rainbow(m, rainbow_cycle_type, need_to_sparkle, percent);
