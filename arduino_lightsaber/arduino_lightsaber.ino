@@ -12,7 +12,8 @@
 #define PERIOD_BASELINE 833
 #define NUM_LEDS 216
 #define HALF_LEDS (NUM_LEDS / 2)
-#define MIN_BRIGHTNESS 100
+#define MIN_BRIGHTNESS 50.0
+#define MAX_BRIGHTNESS 200.0
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -20,7 +21,8 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ
 // make sure generateHueLUT(milliseconds per full cycle) is called in setup() before LED_Rainbow() is ever used
 // if the hueLUT needs to be changed, the code to generate a new LUT is in the GitHub repository at https://github.com/git-huber123/Rainbow-lightsaber
 
-int percent = 100; 
+int percent = 100;
+int last3_percents[] = {percent, percent, percent};
 unsigned long last_battery_check_ms = 0;
 
 const unsigned long impact_cooldown = 300; // In ms
@@ -66,35 +68,36 @@ uint16_t average = 0;
 // NEW FUNCTIONS
 
 uint16_t calculateBaseHue(unsigned long ms, uint16_t cycle_length_ms) {
-  return (uint32_t(ms % cycle_length_ms) * 65536.0) / cycle_length_ms;
+  uint16_t basehue = (uint32_t)((65536UL * (ms % (unsigned long)cycle_length_ms)) / cycle_length_ms);
+  return basehue;
 }
 
 int getBatteryPercent() {
-// Note that this is not exact, but approximate to the nearest 5%
   uint16_t adc = ls.read_battery_voltage();  // Reads Vcc using internal reference
   float voltage = (1.1 * 1023.0) / (float)adc;
 
-  if (voltage >= 4.20) return 100;
-  if (voltage >= 4.15) return 95;
-  if (voltage >= 4.11) return 90;
-  if (voltage >= 4.07) return 85;
-  if (voltage >= 4.03) return 80;
-  if (voltage >= 3.99) return 75;
-  if (voltage >= 3.95) return 70;
-  if (voltage >= 3.91) return 65;
-  if (voltage >= 3.87) return 60;
-  if (voltage >= 3.83) return 55;
-  if (voltage >= 3.79) return 50;
-  if (voltage >= 3.75) return 45;
-  if (voltage >= 3.71) return 40;
-  if (voltage >= 3.67) return 35;
-  if (voltage >= 3.63) return 30;
-  if (voltage >= 3.59) return 25;
-  if (voltage >= 3.55) return 20;
-  if (voltage >= 3.51) return 15;
-  if (voltage >= 3.47) return 10;
-  if (voltage >= 3.40) return 5;
-  return 0;
+  // --- Calibration ---
+  // At ADC = 248, voltage = ~4.2V (100%)
+  // At ADC = 300, voltage = ~3.6V (0%)
+  // Linear estimate: voltage = m * adc + b
+  voltage = -0.01034 * adc + 6.765; // You can fine-tune these later
+
+  Serial.print("Raw ADC: "); 
+  Serial.print(adc);
+  Serial.print(" | Voltage: "); 
+  Serial.print(voltage);
+  Serial.print("V | Battery %: ");
+  Serial.println(percent);
+
+  const float maxV = 4.20;
+  const float minV = 3.20;
+
+  if (voltage >= maxV) return 100;
+  if (voltage <= minV) return 0;
+
+  // Linear interpolation
+  float percent = (voltage - minV) / (maxV - minV) * 100.0;
+  return round(percent);
 }
 
 bool valueInArray(int value, int* arr, int len) {
@@ -104,28 +107,41 @@ bool valueInArray(int value, int* arr, int len) {
   return false;
 }
 
-void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle, int percent) { // NUM_LEDS is used when you want the total amount of LEDs, HALF_LEDS is used for half the LEDs
+void LED_Rainbow(unsigned long ms, int cycle_type, bool sparkle, int percent) { // NUM_LEDS is used when you want the total amount of LEDs, HALF_LEDS is used for half the LEDs
 
   // Original base_hue calculation
   // uint16_t base_hue = (uint32_t)((65536UL * (m % (unsigned long)cycle_length_ms)) / cycle_length_ms);
+  ms = ms - rainbow_start_time;
   int cycle_length_ms = seconds_per_full_cycle * 1000;
-  uint16_t base_hue = calculateBaseHue(m, 5000);
+  uint16_t base_hue = calculateBaseHue(ms, 5000);
+  
+  Serial.print("Checking battery percent: ");
+  Serial.println(percent);
 
-  strip.setBrightness(MIN_BRIGHTNESS + ((percent / 100.0) * (255 - MIN_BRIGHTNESS)));
-
-  if (percent <= 25) {
-    strip.setBrightness(75);
+  if (percent <= 25 && ms > 1250 + rainbow_start_time) {
+    strip.setBrightness((int)(MIN_BRIGHTNESS / 2));
     strip.fill(strip.Color(255, 0, 0));
+    Serial.print("LOW BATTERY OF: ");
+    Serial.println(percent);
+    strip.show();
     return;
   }
 
+  int full_strip_brightness = MIN_BRIGHTNESS + ((percent / 100.0) * (MAX_BRIGHTNESS - MIN_BRIGHTNESS));
+  strip.setBrightness(full_strip_brightness);
+  Serial.print("Brightness based on battery: ");
+  Serial.println(full_strip_brightness);
+  //strip.setBrightness(255);
+  //strip.show();
 
   if (cycle_type == 1) {
+    // delay(5000);
     // strip.fill(strip.Color(255, 0, 0));
     // strip.show();
     // return;
-
+    uint16_t hue_offset = 0;
     for (int led_num = 0; led_num < HALF_LEDS; led_num++) {
+      
 
       // Each led's hue is base_hue + a step for each led
       // Original hue calculations
@@ -133,7 +149,7 @@ void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle, int percent) { /
       // uint16_t hue = (base_hue - hue_offset) & 0xFFFF;
 
       // All of the possible base_hue values and hue_offset values are already declared, so this makes it quicker to calculate them
-      uint16_t hue_offset = getHueOffset(led_num);
+      hue_offset = getHueOffset(led_num);
       uint16_t hue = (base_hue - hue_offset) & 0xFFFF;
 
       uint32_t color = strip.gamma32(strip.ColorHSV(hue, 240, 240));
@@ -144,8 +160,10 @@ void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle, int percent) { /
       // Set color for top half (LEDs 108 to 215), mirrored index
       strip.setPixelColor(NUM_LEDS - led_num - 1, color);
     }
+    strip.show();
     return;
   } else if (cycle_type == 2) {
+    Serial.println("type 2");
     // strip.fill(strip.Color(0, 255, 0));
     // strip.show();
     // return;
@@ -154,6 +172,7 @@ void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle, int percent) { /
 
       strip.setPixelColor(led_num, strip.gamma32(strip.ColorHSV(base_hue, 240, 240)));
     }
+    strip.show();
     return;
   } 
   #if 0
@@ -197,7 +216,6 @@ void LED_Rainbow(unsigned long m, int cycle_type, bool sparkle, int percent) { /
     }
   }
   #endif
-  strip.show();
 }
 
 void LED_Flashes(unsigned long m, unsigned long &last_flash_time, uint32_t color1, uint32_t color2, int &current_color) {
@@ -209,20 +227,23 @@ void LED_Flashes(unsigned long m, unsigned long &last_flash_time, uint32_t color
       strip.fill(color1);
       current_color = 1;
     }
-    strip.show();
     last_flash_time = m;
   }
 }
 // END OF NEW FUNCTIONS
 
 void setup(void) {
+  for (int i = 0; i < 3; i++) {
+    percent += getBatteryPercent();
+    delay(50);
+  }
 
   strip.begin();
   ls.begin();
 
   Serial.begin(500000);
   Serial.println("Booting lightsaber...");
-  Serial.println(getBatteryPercent());
+  Serial.println(percent);
 
   // NEW CODE
   flashing_colors[0] = strip.Color(0, 0, 255);
@@ -262,7 +283,7 @@ void setup(void) {
       strip.setPixelColor(NUM_LEDS - 1 - i, strip.gamma32(strip.ColorHSV(hue, 240, 240)));
 
       if (percent <= 25) {
-        strip.setBrightness(75);
+        strip.setBrightness(MIN_BRIGHTNESS / 2);
         strip.fill(strip.Color(255, 0, 0));
         break;
       }
@@ -312,7 +333,7 @@ void loop() {
     ls.read_gyro(&x, &y, &z);
     mag = (int32_t)z * (int32_t)z + (int32_t)y * (int32_t)y;
     mag = isqrt(mag);
-    if ((mag - last_mag > IMPACT_THRESHOLD) || (mag - last_mag < -IMPACT_THRESHOLD)  && (m - last_impact_time > impact_cooldown)) {
+    if (((mag - last_mag > IMPACT_THRESHOLD) || (mag - last_mag < -IMPACT_THRESHOLD)) && (m - last_impact_time > impact_cooldown)) {
       last_impact_time = m;
       rainbow_cycle_type = (rainbow_cycle_type % modes_in_use) + 1;
       Serial.println(rainbow_cycle_type);
@@ -334,8 +355,16 @@ void loop() {
   } else {
     need_to_sparkle = false;
   }
-  if (m - last_battery_check_ms >= 1000) {
-    percent = getBatteryPercent(); // Note that this is not exact, but approximate to the nearest 5%
+  if (m - last_battery_check_ms >= 1000 or m - rainbow_start_time <= 100) {
+    for (int i = 0; i < 3; i++) {
+      if (i = 2) {
+        last3_percents[i] = percent;
+      } else {
+        last3_percents[i] = last3_percents[i+1];
+      }
+    }
+    percent = getBatteryPercent(); // Note that this is not exact
+    percent = round((percent + last3_percents[0] + last3_percents[1] + last3_percents[2]) / 4);
     last_battery_check_ms = m;
   }
 
