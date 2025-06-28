@@ -7,8 +7,9 @@
 
 #define IMPACT_THRESHOLD 1500 // Default is 2000
 #define BUZZ_FILTER_TC 100
-#define BUZZ_MAX_CHANGE 150
-#define BUZZ_BASELINE 60 // Controls volume, default is 50
+#define BUZZ_MAX_CHANGE 100 // Controls volume change, default is 150
+#define BUZZ_BASELINE 100 // Controls volume, default is 50
+// BUZZ_BASELINE + BUZZ_MAX_CHANGE should be < 256 so it remains a base16 number
 #define PERIOD_BASELINE 833
 #define NUM_LEDS 216
 #define HALF_LEDS (NUM_LEDS / 2)
@@ -68,7 +69,7 @@ uint16_t average = 0;
 // NEW FUNCTIONS
 
 uint16_t calculateBaseHue(unsigned long ms, uint16_t cycle_length_ms) {
-  uint16_t basehue = (uint32_t)((65536UL * (ms % (unsigned long)cycle_length_ms)) / cycle_length_ms);
+  uint16_t basehue = 65535 - (uint32_t)((65536UL * (ms % (unsigned long)cycle_length_ms)) / cycle_length_ms);
   return basehue;
 }
 
@@ -113,7 +114,7 @@ void LED_Rainbow(unsigned long ms, int cycle_type, bool sparkle, int percent) { 
   // uint16_t base_hue = (uint32_t)((65536UL * (m % (unsigned long)cycle_length_ms)) / cycle_length_ms);
   ms = ms - rainbow_start_time;
   int cycle_length_ms = seconds_per_full_cycle * 1000;
-  uint16_t base_hue = calculateBaseHue(ms, 5000);
+  uint16_t base_hue = calculateBaseHue(ms, cycle_length_ms);
   
   Serial.print("Checking battery percent: ");
   Serial.println(percent);
@@ -150,7 +151,7 @@ void LED_Rainbow(unsigned long ms, int cycle_type, bool sparkle, int percent) { 
 
       // All of the possible base_hue values and hue_offset values are already declared, so this makes it quicker to calculate them
       hue_offset = getHueOffset(led_num);
-      uint16_t hue = (base_hue - hue_offset) & 0xFFFF;
+      uint16_t hue = (base_hue + hue_offset + 65536) & 0xFFFF;
 
       uint32_t color = strip.gamma32(strip.ColorHSV(hue, 240, 240));
 
@@ -250,8 +251,6 @@ void setup(void) {
   flashing_colors[1] = strip.Color(255, 0, 0);
   // END OF NEW CODE
 
-
-
   pinMode(6, OUTPUT);
   pinMode(3, OUTPUT);
   digitalWrite(3, 0);
@@ -274,7 +273,7 @@ void setup(void) {
     if (LED_type == 1) {               // If its rainbow type, the opening sequence is the rainbow fill
       delay(5);
       // Calculate hue progressing from bottom to middle
-      uint16_t hue = (65536 / HALF_LEDS) * i;  // Hue from 0 to full rainbow spread over half strip
+      uint16_t hue = getHueOffset(i);  // Hue from 0 to full rainbow spread over half strip
 
       // Set color for bottom half (LEDs 0 to 107)
       strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(hue, 240, 240)));
