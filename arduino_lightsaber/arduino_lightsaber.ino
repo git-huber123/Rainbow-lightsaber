@@ -165,13 +165,9 @@ void LED_Rainbow(unsigned long ms, int cycle_type, bool sparkle, int percent) { 
     return;
   } else if (cycle_type == 2) {
     Serial.println("type 2");
-    // strip.fill(strip.Color(0, 255, 0));
-    // strip.show();
-    // return;
 
     for (int led_num = 0; led_num < NUM_LEDS; led_num++) {
-
-      strip.setPixelColor(led_num, strip.gamma32(strip.ColorHSV(base_hue, 240, 240)));
+      strip.setPixelColor(led_num, strip.gamma32(strip.ColorHSV((65536 - base_hue) & 0xFFFF, 240, 240)));
     }
     strip.show();
     return;
